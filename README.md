@@ -13,7 +13,7 @@
 | 镜像 | `ghcr.io/local-inference-lab/vllm:karmic-kraken-20261016.2` | 上游 `local-inference-lab/blackwell-llm-docker` 构建，commit `3d1ccd84` |
 | 底座 | `nvcr.io/nvidia/pytorch@sha256:33ef5fc1…` | NVIDIA PyTorch 26.08，CUDA 13.4.1 |
 | 引擎 | vLLM `0.1.dev21836+g6d66eed35.cu134` | FlashInfer + B12X 注意力/MoE + DeepGEMM，按 SM120 编译 |
-| 硬件 | 8× RTX 6000D 96 GB（SM120，PCIe，无 NVLink） | 本配方占用 4 张卡，TP4 |
+| 硬件 | 8× RTX 6000D 85 GB（SM120，PCIe，无 NVLink） | 本配方占用 4 张卡，TP4 |
 
 为什么是这套：RTX 6000D 是 SM120，PyPI 上的通用轮子没有为它编译 FlashInfer、DeepGEMM 和 B12X 后端，
 直接 `pip install vllm` 跑不出同样速度。上游把这套编译结果做成一个镜像加多个模型 profile，
@@ -42,8 +42,8 @@ docker compose logs -f | grep -m1 'Application startup complete'
 curl -s localhost:8000/v1/models | jq -r '.data[].id'
 ```
 
-首次启动要加载 463 GB 权重并做 CUDA Graph 捕获，4 卡大约十分钟量级；
-`/cache` 卷保存 JIT 和 graph 缓存，重启会快很多。
+首次启动要加载 463 GB 权重并捕获 CUDA Graph，4 卡实测约 5 分钟（权重加载 75 s、
+引擎初始化 86 s）；`/cache` 卷保存 JIT 和 graph 缓存，重启会快很多。
 
 ## 实测结果
 
