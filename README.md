@@ -53,6 +53,8 @@ curl -s localhost:8000/v1/models | jq -r '.data[].id'
 | 场景 | 结果 |
 | --- | --- |
 | 短输入，1 并发 | 228 tok/s |
+| 短输入，4 并发 | 497 tok/s |
+| 短输入，10 并发 | 718 tok/s |
 | 短输入，16 并发（8 槽位 / capture 8） | 382 tok/s |
 | 短输入，16 并发（16 槽位 / capture 64） | 890–950 tok/s |
 | 130K 输入，单路 | 首字 10.3 s，端到端 77 tok/s |
@@ -62,6 +64,16 @@ curl -s localhost:8000/v1/models | jq -r '.data[].id'
 `--max-cudagraph-capture-size` 从 8 提到 64，吞吐约 2.4 倍。原因见 [docs/tuning.md](docs/tuning.md)。
 
 这些是合成负载下的框架吞吐，不含业务正确性评价，也不能外推成多少人同时用没问题。
+
+## 跑不到这个速度时
+
+单路几十、四路反而更低，这种量级通常不是参数差一点，而是这一套里有东西没对上。按顺序查：
+
+1. 权重是不是 CSF 版：`MODEL` 指向 `…-lossless-CSF` 目录，启动带 `--checkpoint csf`。换原版 BF16/FP8 权重塞不进 4×85 GB，只能靠内存换页，速度掉一个量级。
+2. 投机解码有没有起来：启动日志应出现 `Capturing model for DSpark speculator`。关掉 DSpark 单路会从 228 掉到约 150。
+3. 测的是不是短输入 + 长输出：上表是约 355 token 输入、固定 1024 token 输出。只生成 32–64 token 时首字时间摊薄下来，tok/s 只剩几十；130K 输入我们自己也只有 77。
+4. 报的是哪个口径：890–950 是 16 路聚合。单路稳态 228–255，四路聚合 497（单请求约 144），十路聚合 718。单请求速度和聚合速度混着比，结论会完全不同。
+5. 主机资源够不够：`--engram-table-memory ram` 要足够的 memlock（compose 里 256 GiB）和 `shm_size 16g`；卡不是 RTX 6000D/SM120 时，镜像里按 SM120 编译的内核也用不上。
 
 ## 边界
 
