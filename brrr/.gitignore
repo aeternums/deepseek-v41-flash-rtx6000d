@@ -1,0 +1,9 @@
+.env
+__pycache__/
+.venv/
+mixed-million-result.json
+
+!results/*-code.log
+compose-off.json
+brrr-serve-off
+runs/

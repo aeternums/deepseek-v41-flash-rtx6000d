@@ -1,0 +1,9 @@
+--- a/src/brrr/kernels/engram_nvme.cpp
++++ b/src/brrr/kernels/engram_nvme.cpp
+@@ -42,5 +42,5 @@
+ static void read_rows(Store* store, int64_t count) {
+-    const bool direct = count <= DIRECT_ROWS;
++    const bool direct = false;
+     int64_t next = 0, done = 0;
+     while (done < count) {
+         while (next < count && !store->free.empty()) {

@@ -1,0 +1,82 @@
+{
+  "services": {
+    "deepseek": {
+      "image": "deepseek-v41-brrr:2aff972-buffered",
+      "init": true,
+      "restart": "no",
+      "ipc": "host",
+      "cpuset": "${CPUSET:-0-31}",
+      "mem_limit": "360g",
+      "memswap_limit": "360g",
+      "security_opt": [
+        "seccomp=unconfined"
+      ],
+      "ulimits": {
+        "memlock": {
+          "soft": -1,
+          "hard": -1
+        },
+        "stack": {
+          "soft": 67108864,
+          "hard": 67108864
+        }
+      },
+      "ports": [
+        "127.0.0.1:18136:18136"
+      ],
+      "environment": {
+        "PORT": "18136",
+        "ADAPTIVE": "true",
+        "VLLM_ADAPTIVE_VERIFICATION_PROFILE_CONTEXT_LEN": "${PROFILE_CONTEXT:-8192}"
+      },
+      "volumes": [
+        "jit:/cache/jit",
+        "${MODEL_DIR:?Set MODEL_DIR to the downloaded model directory}:/model:ro"
+      ],
+      "command": [
+        "--max-model-len",
+        "1048576",
+        "--max-num-seqs",
+        "16",
+        "--max-cudagraph-capture-size",
+        "128",
+        "--cudagraph-metrics",
+        "--gpu-memory-utilization",
+        "0.975",
+        "--speculative-config",
+        "{\"method\":\"dspark\",\"num_speculative_tokens\":7,\"draft_sample_method\":\"probabilistic\",\"rejection_sample_method\":\"block\",\"enable_adaptive_verification\":true,\"attention_backend\":\"B12X\",\"moe_backend\":\"b12x\",\"adaptive_verification_cost_scale\":${COST_SCALE:-1.0}}",
+        "--served-model-name",
+        "DeepSeek-V4.1-Flash-1017",
+        "--max-num-batched-tokens",
+        "4096",
+        "--kv-cache-memory-bytes",
+        "1610612736",
+        "--long-prefill-token-threshold",
+        "2048"
+      ],
+      "deploy": {
+        "resources": {
+          "reservations": {
+            "devices": [
+              {
+                "driver": "nvidia",
+                "device_ids": [
+                  "${GPU0:-0}",
+                  "${GPU1:-1}",
+                  "${GPU2:-2}",
+                  "${GPU3:-3}"
+                ],
+                "capabilities": [
+                  "gpu"
+                ]
+              }
+            ]
+          }
+        }
+      }
+    }
+  },
+  "volumes": {
+    "jit": {}
+  }
+}

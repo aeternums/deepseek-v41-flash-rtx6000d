@@ -1,0 +1,6 @@
+{"size": 100000, "prefix": "shared", "concurrency": 1, "aggregate_tps": 221.8, "ttft_ms": 257, "e2e_s": 2.307}
+{"size": 100000, "prefix": "shared", "concurrency": 8, "aggregate_tps": 746.4, "ttft_ms": 630, "e2e_s": 5.309}
+{"size": 100000, "prefix": "independent", "concurrency": 8, "aggregate_tps": 757.7, "ttft_ms": 664, "e2e_s": 5.275}
+{"size": 200000, "prefix": "shared", "concurrency": 1, "aggregate_tps": 212.5, "ttft_ms": 314, "e2e_s": 2.408}
+{"size": 200000, "prefix": "shared", "concurrency": 8, "aggregate_tps": 668.7, "ttft_ms": 811, "e2e_s": 5.92}
+{"size": 200000, "prefix": "independent", "concurrency": 4, "aggregate_tps": 474.8, "ttft_ms": 603, "e2e_s": 4.133}
