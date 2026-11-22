@@ -5,24 +5,3 @@
 {"variant": "base", "size": 200000, "prefix": "shared", "concurrency": 1, "aggregate_tps": 207.9, "ttft_ms": 307, "e2e_s": 2.461}
 {"variant": "base", "size": 200000, "prefix": "shared", "concurrency": 8, "aggregate_tps": 678.5, "ttft_ms": 742, "e2e_s": 5.709}
 {"variant": "base", "drafts": 19212.0, "draft_tokens": 41288.0, "accepted_tokens": 24993.0}
-{"variant": "low", "size": 100000, "prefix": "independent", "concurrency": 8, "aggregate_tps": 734.8, "ttft_ms": 671, "e2e_s": 5.451}
-{"variant": "low", "size": 100000, "prefix": "shared", "concurrency": 1, "aggregate_tps": 228.4, "ttft_ms": 259, "e2e_s": 2.24}
-{"variant": "low", "size": 100000, "prefix": "shared", "concurrency": 8, "aggregate_tps": 717.0, "ttft_ms": 636, "e2e_s": 5.42}
-{"variant": "low", "size": 200000, "prefix": "independent", "concurrency": 4, "aggregate_tps": 482.5, "ttft_ms": 627, "e2e_s": 4.119}
-{"variant": "low", "size": 200000, "prefix": "shared", "concurrency": 1, "aggregate_tps": 212.5, "ttft_ms": 306, "e2e_s": 2.407}
-{"variant": "low", "size": 200000, "prefix": "shared", "concurrency": 8, "aggregate_tps": 679.5, "ttft_ms": 825, "e2e_s": 5.851}
-{"variant": "low", "drafts": 19097.0, "draft_tokens": 51684.0, "accepted_tokens": 26612.0}
-{"variant": "high", "size": 100000, "prefix": "independent", "concurrency": 8, "aggregate_tps": 659.1, "ttft_ms": 589, "e2e_s": 5.915}
-{"variant": "high", "size": 100000, "prefix": "shared", "concurrency": 1, "aggregate_tps": 217.7, "ttft_ms": 260, "e2e_s": 2.351}
-{"variant": "high", "size": 100000, "prefix": "shared", "concurrency": 8, "aggregate_tps": 678.3, "ttft_ms": 628, "e2e_s": 5.856}
-{"variant": "high", "size": 200000, "prefix": "independent", "concurrency": 4, "aggregate_tps": 443.5, "ttft_ms": 627, "e2e_s": 4.425}
-{"variant": "high", "size": 200000, "prefix": "shared", "concurrency": 1, "aggregate_tps": 204.5, "ttft_ms": 313, "e2e_s": 2.502}
-{"variant": "high", "size": 200000, "prefix": "shared", "concurrency": 8, "aggregate_tps": 617.3, "ttft_ms": 786, "e2e_s": 6.445}
-{"variant": "high", "drafts": 14478.0, "draft_tokens": 26948.0, "accepted_tokens": 18952.0}
-{"variant": "off", "size": 100000, "prefix": "independent", "concurrency": 8, "aggregate_tps": 638.7, "ttft_ms": 622, "e2e_s": 6.398}
-{"variant": "off", "size": 100000, "prefix": "shared", "concurrency": 1, "aggregate_tps": 146.5, "ttft_ms": 243, "e2e_s": 3.493}
-{"variant": "off", "size": 100000, "prefix": "shared", "concurrency": 8, "aggregate_tps": 621.7, "ttft_ms": 714, "e2e_s": 6.569}
-{"variant": "off", "size": 200000, "prefix": "independent", "concurrency": 4, "aggregate_tps": 383.5, "ttft_ms": 591, "e2e_s": 5.331}
-{"variant": "off", "size": 200000, "prefix": "shared", "concurrency": 1, "aggregate_tps": 137.9, "ttft_ms": 294, "e2e_s": 3.71}
-{"variant": "off", "size": 200000, "prefix": "shared", "concurrency": 8, "aggregate_tps": 573.5, "ttft_ms": 712, "e2e_s": 7.108}
-{"variant": "off", "drafts": 0, "draft_tokens": 0, "accepted_tokens": 0}

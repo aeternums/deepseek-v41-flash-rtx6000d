@@ -1,6 +1,6 @@
 # 4× RTX 6000D 上的 DeepSeek-V4.1-Flash 原生 BRRR 复现指南
 
-**2026-11-22 采用的配置**为 TP4、原版权重、B12X、FP8 KV、DSpark 最多 7 步自适应验证、1,048,576 token 上下文、16 个调度槽位。目标是混合服务短对话、代码和逐轮累积的长会话。仓库首页的 CSF 方案是另一套历史配方。
+**2026-11-22 采用的配置**为 TP4、原版权重、B12X、FP8 KV、DSpark 最多 7 步自适应验证、1,048,576 token 上下文、16 个调度槽位。目标是混合服务短对话、代码和逐轮累积的长会话。结果来自与生产一致的配置，使用合成负载。
 
 ## 1. 主机与固定版本
 
@@ -53,7 +53,7 @@ python3 bench/short_chat.py http://127.0.0.1:18136 1 8 16 > runs/short.jsonl
 python3.12 -m venv .venv
 .venv/bin/pip install -r bench/requirements.txt
 GPU8_BENCH_NAMESPACE=short-cost-ab .venv/bin/python bench/code.py \
-  --port 18136 -s 2048 -c 1 8 -r 5 --temperature 1 --top-p 1 > runs/code.log
+  --port 18136 -s 2048 -c 1 4 8 16 -r 5 --temperature 1 --top-p 1 > runs/code.log
 
 python3 bench/warm_chat.py tokenize http://127.0.0.1:18136
 python3 bench/warm_chat.py bench http://127.0.0.1:18136 > runs/warm.jsonl
@@ -65,46 +65,40 @@ python3 bench/mixed_million.py
 - **长对话**10 万、20 万输入，预热前缀后按请求查验至少 95% 命中及检索标记，每个负载三轮，统计该组端到端聚合吞吐的中位数。20 万独立前缀用 C4，因为 C8 超过测试 KV 池。
 - **近 1M 混合**随机化长提示开头和检索标记，首 token 到达后立刻发 8 个短对话。脚本断言检索正确、上下文符合预算、所有短请求在长生成结束前完成，结果写到 `mixed-million-result.json`。
 
-成本系数 A/B 在启动命令前分别设置 `export COST_SCALE=0.5`、`export COST_SCALE=2.0`，默认 1.0。64K 标定使用 `export PROFILE_CONTEXT=65536` 并保持成本系数 1.0。每次变更运行 `docker compose create --force-recreate deepseek`，重新设置 `--cpuset-mems`、启动、等待健康，再按相同顺序测。试验结束用 `unset COST_SCALE PROFILE_CONTEXT` 恢复默认。
+## 4. 技术栈与配置
 
-完全关闭 DSpark 的对照需要同时去掉上游 launcher 和 Compose 的投机参数。先停掉占用测试端口的实例，再生成这组配置：
+| 层 | 生产实现 |
+|---|---|
+| 推理框架 | Local Inference Lab 的 vLLM 构建 `0.1.dev21836+g6d66eed35`，通过 BRRR 上游 Dockerfile 应用 `vllm.patch` 和 SM120 自定义内核 |
+| 模型与并行 | DeepSeek-V4.1-Flash-1017 原版 checkpoint、TP4，同 NUMA 节点四卡，B12X PCIe all-reduce |
+| 算子 | BRRR 融合解码结合 B12X attention、MoE 和 linear 后端；CUDA Graph 模式 `FULL_AND_PIECEWISE`，最大捕获尺寸 128 |
+| 投机解码 | DSpark 最多 7 步，自适应验证、概率草稿采样和 block rejection。默认成本系数 1.0，启动标定上下文 8K |
+| 内存与调度 | FP8 KV，每 GPU 显式预留 1.5 GiB；chunked prefill，每次调度 4,096 批 token，单个长请求每块最多 2,048 token，16 槽，异步调度 |
+| Engram | 表从原版权重读取，启用 projection TP；本地补丁将小块读取交给 Linux 页缓存。热缓存基准先读取第 47、48 个 shard |
+| 服务接口 | vLLM OpenAI 兼容 HTTP API，DeepSeek V4.1 tokenizer、reasoning 和 tool-call parser |
 
-```bash
-docker compose stop deepseek
-unset COST_SCALE PROFILE_CONTEXT
-docker run --rm --entrypoint cat deepseek-v41-brrr:2aff972-buffered /usr/local/bin/brrr-serve |
-  sed '/^[[:space:]]*--speculative-config /d' > brrr-serve-off
-chmod +x brrr-serve-off
-docker compose config --format json |
-  jq --arg launcher "$PWD/brrr-serve-off" '
-    .services.deepseek.command |= (index("--speculative-config") as $i | del(.[$i:$i+2])) |
-    .services.deepseek.volumes += [{"type":"bind","source":$launcher,"target":"/usr/local/bin/brrr-serve","read_only":true}]
-  ' > compose-off.json
-docker compose -f compose-off.json create --force-recreate deepseek
-docker update --cpuset-mems "$NUMA_NODE" "$(docker compose -f compose-off.json ps -aq deepseek)"
-docker compose -f compose-off.json start deepseek
-```
+[Compose](compose.yaml)保存部署覆盖参数，[上游 launcher](https://github.com/fraserprice/DeepSeek-4.1-Flash-1017-BRRR/blob/2aff97254f4b9005e181b91386c120505e091c18/entrypoint.sh)保存其余引擎默认值。
 
-待健康后重复页缓存预热和基准。用 `docker compose -f compose-off.json stop deepseek` 停止对照。重新执行基线启动流程时为 `create` 加上 `--force-recreate`。
+## 5. 生产配置实测成绩
 
-## 4. 实测结果
+以下取同一生产配置已记录的各并发档最好结果，可来自不同批次。按脚本的并发档统计展示。
 
-C8、C4 是并发合计。对话是端到端，短代码是所有流同处解码的公共窗口。代码单流列给每轮速率的中位数。
+| 负载 | 单流 | 4 流 | 8 流 | 16 流 |
+|---|---:|---:|---:|---:|
+| 短代码解码（约 2.15K 输入） | **548** | **1,134** | **1,627** | **2,226** |
+| 短对话端到端（512 输出） | **246** | — | **842** | — |
 
-| 方案 | 短对话 C1 / C8 | 短代码 C1 / C8 | 100K 共享 C8 | 100K 独立 C8 | 200K 共享 C8 | 200K 独立 C4 |
-|---|---:|---:|---:|---:|---:|---:|
-| BRRR 7 步自适应，成本 1.0 | 246 / 842 | 548 / 1600 | 741 | 750 | 679 | 453 |
-| 成本 0.5 | 240 / 829 | 553 / 1600 | 717 | 735 | 680 | 483 |
-| 成本 2.0 | 233 / 753 | 524 / 1590 | 678 | 659 | 617 | 444 |
-| 关闭 DSpark | 164 / 697 | 176 / 764 | 622 | 639 | 574 | 384 |
-| 64K 成本标定 | 235 / 803 | 542 / 1595 | 746 | 758 | 669 | 475 |
+单位 token/s。代码单流取解码中位数；多流取共同解码窗口的聚合吞吐。短对话使用端到端计时，8 流首 token p95 约 **353 ms**。代码 [单流原始记录](results/base-code.log)与 [并发原始记录](results/production-c1-c16-code.log)来自分别运行的基准。
 
-单位均为 token/s。成本 0.5 和 64K 标定能提升部分 200K 独立会话吞吐，但短对话下降。基线短对话 C8 首 token p95 约 353 ms。生产因此采用成本 1.0、8K 标定。
+- **预热长会话**。10 万独立前缀 8 流合计 **750 token/s**，20 万共享前缀 8 流合计 **679 token/s**。 [原始汇总](results/warm-chat-summary.jsonl)
+- **近 1M 混合负载**。1,035,067 输入 token，4,096 输出 token，检索通过。冷长请求首 token **190.1 秒**，生成 **144.8 token/s**。长请求开始生成后发出的 8 个短请求均在其结束前完成，短请求首 token p50 / p95 **210 / 506 ms**，合计端到端 **581 token/s**。 [逐请求结果](results/mixed-million.json)
 
-**长短混合实测。** 1,035,067 输入 token、4,096 输出 token。冷长请求首 token **190.1 s**，解码 **144.8 token/s**。长请求开始生成后发出的 8 个短请求全部在其结束前完成，短请求首 token p50 / p95 为 **210 / 506 ms**，合计端到端 **581 token/s**。
+混合测试覆盖了长请求生成阶段。冷长请求预填充期间的短请求尾延迟尚未验证。GPU 时钟、NUMA、页缓存和请求内容会影响复测数字。
 
-**可解释的长上下文开销。** 单流 GPU trace 中，2K、100K、200K 的验证图中位耗时分别为 7.29、7.88、8.44 ms。图内候选筛选核按每次图调用归一后约为 0.06、0.77、1.32 ms。相关数据见 [profile-summary.jsonl](results/profile-summary.jsonl)。
+## 6. 参考来源
 
-**社区对照。** 上游 BRRR 在四张 RTX PRO 6000 Max-Q 上保留固定 DSpark，约 2.15K 代码负载测得 703 单流中位、1847 八流合计。我们的实测条件和验证策略不同，单流未达到 700。Moet 在本机曾测到冷 1M 首 token 约 73 秒，但此次混合选型保留 BRRR。 [上游公开测试](https://github.com/fraserprice/DeepSeek-4.1-Flash-1017-BRRR#results)
-
-[原始合成基准与汇总](results/)包含逐请求时间与 token 数。配置和脚本以复刻相同实验条件为目标，时钟、NUMA、页缓存、并发流量与输出接受长度都会影响测速。当前混合用例测的是长请求**生成期间**插入短请求，真实流量重放和冷 1M **预填充期间**的短请求 p95 尚无结果。
+- [DeepSeek 原版模型、许可和固定权重](https://huggingface.co/deepseek-ai/DeepSeek-V4.1-Flash-1017/tree/1bae0e1088993b9b82de08f59de5be5a34e42170)
+- [Fraser Price 的 BRRR 固定源码、Dockerfile 和基准](https://github.com/fraserprice/DeepSeek-4.1-Flash-1017-BRRR/tree/2aff97254f4b9005e181b91386c120505e091c18)
+- [Local Inference Lab 的 vLLM 镜像构建](https://github.com/local-inference-lab/blackwell-llm-docker)与 [vLLM fork](https://github.com/local-inference-lab/vllm)
+- [Local Inference Lab B12X](https://github.com/local-inference-lab/b12x)与 [FlashInfer](https://github.com/flashinfer-ai/flashinfer)
+- [vLLM 的 DSpark 自适应验证说明](https://github.com/vllm-project/vllm-project.github.io/blob/main/_posts/2026-08-14-dspark-adaptive-verification.md)

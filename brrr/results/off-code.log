@@ -1,5 +1,0 @@
-DeepSeek-V4.1-Flash-1017 · code prompt · thinking off · gen ≤2048 tok to natural EOS · repeats=5 · cool to 70°C
-tok/s: p1/p50/p99 = fastest/median/slowest stream · PP from a max_tokens=1 pass · TG from a cached second pass, timed while all streams decode and none has finished
-     prompt       conc   TTFT p50      PP p1     PP p50     PP p99   PP total      TG p1     TG p50     TG p99   TG total  TG window     accept
-      2,148          1     329 ms      6,533      6,528      5,914      6,336        176        176        175        176      1,594          —
-      2,148          8   1,298 ms      6,213      1,654      1,261     10,289         96         96         95        764      1,363          —

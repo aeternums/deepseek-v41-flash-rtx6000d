@@ -26,8 +26,7 @@
       ],
       "environment": {
         "PORT": "18136",
-        "ADAPTIVE": "true",
-        "VLLM_ADAPTIVE_VERIFICATION_PROFILE_CONTEXT_LEN": "${PROFILE_CONTEXT:-8192}"
+        "ADAPTIVE": "true"
       },
       "volumes": [
         "jit:/cache/jit",
@@ -44,7 +43,7 @@
         "--gpu-memory-utilization",
         "0.975",
         "--speculative-config",
-        "{\"method\":\"dspark\",\"num_speculative_tokens\":7,\"draft_sample_method\":\"probabilistic\",\"rejection_sample_method\":\"block\",\"enable_adaptive_verification\":true,\"attention_backend\":\"B12X\",\"moe_backend\":\"b12x\",\"adaptive_verification_cost_scale\":${COST_SCALE:-1.0}}",
+        "{\"method\":\"dspark\",\"num_speculative_tokens\":7,\"draft_sample_method\":\"probabilistic\",\"rejection_sample_method\":\"block\",\"enable_adaptive_verification\":true,\"attention_backend\":\"B12X\",\"moe_backend\":\"b12x\"}",
         "--served-model-name",
         "DeepSeek-V4.1-Flash-1017",
         "--max-num-batched-tokens",

@@ -1,3 +1,0 @@
-{"size": 2048, "ttft": 0.20855784276500344, "seconds": 1.5654635289683938, "decode_tps": 282.28465264035543, "input": 2084, "cached": 1792, "output": 384, "marker": true}
-{"size": 100000, "ttft": 0.30142470682039857, "seconds": 1.752768742851913, "decode_tps": 263.9137810509313, "input": 100040, "cached": 99840, "output": 384, "marker": true}
-{"size": 200000, "ttft": 0.3721257452853024, "seconds": 1.9391688820905983, "decode_tps": 244.43342475073499, "input": 200048, "cached": 199680, "output": 384, "marker": true}
